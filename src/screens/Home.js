@@ -1,13 +1,15 @@
 import React, {useState, useEffect} from 'react'
-import {collection, query, addDoc, Timestamp, onSnapshot, orderBy, updateDoc, doc} from 'firebase/firestore';
+import {collection, query, addDoc, Timestamp, onSnapshot, orderBy, updateDoc, deleteDoc, doc} from 'firebase/firestore';
 import { db } from '../firebase';
 import { map } from '@firebase/util';
 import {Button, Modal, Form} from 'react-bootstrap';
+import toast, { Toaster } from 'react-hot-toast';
 
 function Home() {
   const [reports, setReports] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [description, setDescription] = useState("");
   const [reporter, setReporter] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
@@ -42,10 +44,23 @@ function Home() {
         description: description
       })
       setShowEditModal(false);
+      toast.success("Successfully updated", {position: 'bottom-center',});
     } catch (error) {
-      alert(error);
+      //alert(error);
+      toast.error("An error has occured");
     }finally{
       setDescription("");
+    }
+  }
+
+  const handleDelete = async ()=>{
+    const reportRef = doc(db, 'reports', selectedReport?.id)
+    try {
+      await deleteDoc(reportRef);
+      setShowDeleteModal(!showDeleteModal);
+      toast.success("Successfully deleted", {position: 'bottom-center',});
+    } catch (error) {
+      toast.error("An error has occured");
     }
   }
 
@@ -53,6 +68,11 @@ function Home() {
     setSelectedReport(report);
     setShowEditModal(!showEditModal);
     setDescription(report.data.description);
+  }
+
+  const handleDeleteMode = (report)=>{
+    setSelectedReport(report);
+    setShowDeleteModal(!showDeleteModal);
   }
 
   const getReports = ()=>{
@@ -74,6 +94,7 @@ function Home() {
 
   return (
     <>
+      <Toaster />
       <div className="text-end mt-4">
         <Button onClick={()=>setShowAddModal(true)}>Add New Report</Button>
       </div>
@@ -81,11 +102,25 @@ function Home() {
       {
         reports.map((report)=>{
           return(
-            <p key={report.id}>{report.data.description} - <a href="#" onClick={()=>handleUpdateMode(report)}>Edit</a> - <a href="#">Delete</a> </p>
+            <p key={report.id}>{report.data.description} - <a href="#" onClick={()=>handleUpdateMode(report)}>Edit</a> - <a href="#" onClick={()=>handleDeleteMode(report)}>Delete</a> </p>
           )
           
         })
       }
+      <Modal show={showDeleteModal} onHide={()=>setShowDeleteModal(!showDeleteModal)}>
+        <Modal.Header>
+          <Modal.Title>Delete report - {selectedReport?.id}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>You are about to delete the following report</p>
+          <p>{selectedReport?.data.description}</p>
+          <div>
+          <Button variant="danger" className="mt-4" onClick={handleDelete}>
+                Delete
+              </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
       <Modal show={showEditModal} onHide={()=>setShowEditModal(!showEditModal)}>
         <Modal.Header>
           <Modal.Title>Edit Report - ID {selectedReport?.id}</Modal.Title>
